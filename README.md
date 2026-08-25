@@ -16,6 +16,32 @@ again, on their own device.
 This is the same trusted approach used by well known tools like Sops and
 Git Crypt, wrapped in a simple send and fetch style workflow.
 
+Getting the program
+
+The easiest way, if the computer already has Node installed, is through
+npm, the package manager most JavaScript tools use. Type exactly this,
+including the single small dash before the letter g, which tells npm to
+install it for use anywhere on the computer:
+
+  npm install -g envshare
+
+This quietly downloads the correct ready made program for that exact
+computer the first time it runs, so nobody needs to install the Go
+programming language.
+
+If Node is not available, visit this project's releases page on GitHub
+instead and download the single file that matches the computer, for
+example one ending in windows dot amd64 dot exe for a typical Windows
+computer.
+
+If preferred, it can also be built from the source code directly, by
+installing the Go programming language and, inside this project's folder,
+running these three lines, one at a time:
+
+  go mod tidy
+  go build -o bin/envshare ./cmd/envshare
+  go build -o bin/envshare-server ./cmd/envshare-server
+
 Everyday commands
 
 Type these in plain order, no symbols needed.
@@ -23,24 +49,17 @@ Type these in plain order, no symbols needed.
   envshare keygen
   envshare configure
   envshare addmember
+  envshare removemember
   envshare push .env staging
+  envshare push .env staging 30
   envshare pull staging .env
   envshare members
+  envshare environments
+  envshare history
 
-Getting the programs
-
-You do not need to build this yourself. Once this project is on GitHub with
-a release published, visit the releases page of the repository and download
-the file that matches your computer, for example envshare.windows.amd64.exe
-for a typical Windows computer, or envshare.darwin.arm64 for a newer Mac.
-No installer needed, it is a single file you can run directly.
-
-If you would rather build it yourself, install the Go programming language,
-then inside this project's folder run these three lines, one at a time:
-
-  go mod tidy
-  go build -o bin/envshare ./cmd/envshare
-  go build -o bin/envshare-server ./cmd/envshare-server
+The push command's last, optional word is a number of days. Adding it makes
+that particular secret expire and become unreadable automatically after
+that many days, useful for short lived credentials or temporary access.
 
 Setting up the server
 
@@ -71,7 +90,32 @@ sharing feature, never through plain chat or email.
 
 That person then runs the configure command, which will ask for the
 server address, the team name, and the access code they were just given.
-After that, push, pull, and members all work without asking again.
+After that, every other command works without asking again.
+
+Taking someone off the team
+
+The admin runs the removemember command and types the person's name. This
+immediately stops that person from fetching anything new. It is important
+to know this does not erase what they already fetched in the past, the
+same as handing back a physical key does not erase what someone already
+saw. Right after removing someone, push a fresh copy of every environment
+they had access to, so the version they still remember stops being useful.
+
+Keeping track of who did what
+
+The history command prints a plain, timestamped list of everything that
+has happened for the current team, members added or removed, secrets
+pushed or pulled, and secrets that expired. This is meant to make it easy
+for an admin at a real company to answer the question, who touched this,
+and when.
+
+Running more than one project or company
+
+Nothing extra is needed for this. A team name is really just a separate,
+private space on the server. Running configure again with a different team
+name gives a completely separate set of members, secrets, and history,
+so the same server can safely support several unrelated teams, projects,
+or even different companies at once.
 
 A note for a solo person just starting out
 
@@ -88,18 +132,16 @@ through chat apps, and everyone sharing one single unchanging password.
 It does not protect against someone's own device being compromised while
 they already have legitimate access, the same as any access system. It
 also does not automatically protect old shared secrets when someone
-leaves the team. Removing someone stops them from fetching anything
-shared after they are removed, but anything they already unlocked stays
-readable to them. Treat that the same way you would treat any leaked
-password, by changing the underlying secret itself.
+leaves the team, see the note above about removing someone. Treat any
+removal the same way you would treat a leaked password, by changing the
+underlying secret itself, not only by removing the person.
 
 What is still missing, for anyone who wants to help improve this
 
-A proper remove member command with an automatic re lock step. Stronger
-admin login than one shared password, once more than a handful of admins
-are involved. A saved, searchable history of who fetched what and when. A
-Postgres storage option for running more than one server at once at a
-larger company.
+Stronger admin login than one shared password, once more than a handful of
+admins are involved. A Postgres storage option for running more than one
+server at once at a larger company. Automatic reminders to re push secrets
+after someone is removed, instead of relying on the admin to remember.
 
 License
 

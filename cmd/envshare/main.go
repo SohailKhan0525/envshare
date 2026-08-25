@@ -11,9 +11,13 @@
 //	envshare keygen
 //	envshare configure
 //	envshare addmember
+//	envshare removemember
 //	envshare push .env staging
+//	envshare push .env staging 30
 //	envshare pull staging .env
 //	envshare members
+//	envshare environments
+//	envshare history
 package main
 
 import (
@@ -25,6 +29,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"filippo.io/age"
@@ -38,9 +43,7 @@ func envshareDir() string {
 	return filepath.Join(home, ".envshare")
 }
 
-func identityPath() string {
-	return filepath.Join(envshareDir(), "identity.txt")
-}
+func identityPath() string { return filepath.Join(envshareDir(), "identity.txt") }
 
 type config struct {
 	ServerURL string `json:"serverUrl"`
@@ -48,9 +51,7 @@ type config struct {
 	Token     string `json:"token"`
 }
 
-func configPath() string {
-	return filepath.Join(envshareDir(), "config.json")
-}
+func configPath() string { return filepath.Join(envshareDir(), "config.json") }
 
 func loadConfig() config {
 	var c config
@@ -103,7 +104,17 @@ func loadIdentity() *age.X25519Identity {
 	return nil
 }
 
-// commands
+func apiRequest(method, url, token string, body []byte) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	return http.DefaultClient.Do(req)
+}
 
 func cmdKeygen() {
 	path := identityPath()
@@ -130,18 +141,6 @@ func cmdKeygen() {
 	fmt.Println("Keep the private key file safe. Anyone who has it can read your team's secrets.")
 }
 
-func apiRequest(method, url, token string, body []byte) (*http.Response, error) {
-	req, err := http.NewRequest(method, url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	return http.DefaultClient.Do(req)
-}
-
 func cmdConfigure() {
 	cfg := loadConfig()
 	fmt.Println("Let's set up envshare. Press enter to keep the value shown in brackets.")
@@ -162,7 +161,7 @@ func cmdConfigure() {
 	if err := saveConfig(cfg); err != nil {
 		fail("could not save your settings: %v", err)
 	}
-	fmt.Println("Saved. You can now use push, pull, and members without typing these again.")
+	fmt.Println("Saved. You can now use push, pull, members, environments, and history without typing these again.")
 }
 
 func fetchMemberKeys(server, team, token string) ([]age.Recipient, error) {
@@ -202,7 +201,6 @@ func cmdAddMember() {
 	if cfg.ServerURL == "" || cfg.Team == "" {
 		fail("please run the configure command first, so envshare knows your server address and team name")
 	}
-
 	name := promptLine("New member's name (letters and numbers only): ")
 	key := promptLine("New member's public key (starts with age1): ")
 	adminToken := os.Getenv("EnvshareAdminToken")
@@ -231,11 +229,45 @@ func cmdAddMember() {
 	fmt.Printf("Added %s. Send them this access code privately, for example in person or through a password manager, it will not be shown again:\n\n  %s\n", name, out.Token)
 }
 
+func cmdRemoveMember() {
+	cfg := loadConfig()
+	if cfg.ServerURL == "" || cfg.Team == "" {
+		fail("please run the configure command first")
+	}
+	name := promptLine("Name of the member to remove: ")
+	adminToken := os.Getenv("EnvshareAdminToken")
+	if adminToken == "" {
+		adminToken = promptLine("Admin access code: ")
+	}
+	if name == "" || adminToken == "" {
+		fail("a name and an admin access code are both required")
+	}
+	url := fmt.Sprintf("%s/api/teams/%s/members/%s", strings.TrimRight(cfg.ServerURL, "/"), cfg.Team, name)
+	resp, err := apiRequest(http.MethodDelete, url, adminToken, nil)
+	if err != nil {
+		fail("the request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fail("the server said (%d): %s", resp.StatusCode, string(body))
+	}
+	fmt.Printf("Removed %s.\n\nImportant: they can still read anything they already fetched. To fully lock them out of a secret, push a fresh copy of each environment now that they are off the list.\n", name)
+}
+
 func cmdPush(args []string) {
-	if len(args) != 2 {
-		fail("please type: envshare push, then the file name, then the environment name, for example: envshare push .env staging")
+	if len(args) != 2 && len(args) != 3 {
+		fail("please type: envshare push, then the file name, then the environment name, and optionally how many days until it expires, for example: envshare push .env staging or envshare push .env staging 30")
 	}
 	file, env := args[0], args[1]
+	expireDays := 0
+	if len(args) == 3 {
+		n, err := strconv.Atoi(args[2])
+		if err != nil || n <= 0 {
+			fail("the expire days value must be a positive whole number, for example 30")
+		}
+		expireDays = n
+	}
 	cfg := loadConfig()
 	if cfg.ServerURL == "" || cfg.Team == "" || cfg.Token == "" {
 		fail("please run the configure command first")
@@ -245,7 +277,6 @@ func cmdPush(args []string) {
 	if err != nil {
 		fail("could not read %s: %v", file, err)
 	}
-
 	recipients, err := fetchMemberKeys(cfg.ServerURL, cfg.Team, cfg.Token)
 	if err != nil {
 		fail("could not fetch the team's members: %v", err)
@@ -264,6 +295,9 @@ func cmdPush(args []string) {
 	}
 
 	url := fmt.Sprintf("%s/api/teams/%s/secrets/%s", strings.TrimRight(cfg.ServerURL, "/"), cfg.Team, env)
+	if expireDays > 0 {
+		url += fmt.Sprintf("?expireDays=%d", expireDays)
+	}
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		fail("the request failed: %v", err)
@@ -278,7 +312,11 @@ func cmdPush(args []string) {
 		body, _ := io.ReadAll(resp.Body)
 		fail("the server said (%d): %s", resp.StatusCode, string(body))
 	}
-	fmt.Printf("Sent %s to team %s as environment %s, locked for %d member(s)\n", file, cfg.Team, env, len(recipients))
+	if expireDays > 0 {
+		fmt.Printf("Sent %s to team %s as environment %s, locked for %d member(s), expiring in %d day(s)\n", file, cfg.Team, env, len(recipients), expireDays)
+	} else {
+		fmt.Printf("Sent %s to team %s as environment %s, locked for %d member(s)\n", file, cfg.Team, env, len(recipients))
+	}
 }
 
 func cmdPull(args []string) {
@@ -301,6 +339,9 @@ func cmdPull(args []string) {
 		fail("the request failed: %v", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusGone {
+		fail("this secret has expired, ask an admin to push a fresh copy")
+	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		fail("the server said (%d): %s", resp.StatusCode, string(body))
@@ -319,7 +360,6 @@ func cmdPull(args []string) {
 	if err != nil {
 		fail("could not read the unlocked data: %v", err)
 	}
-
 	if err := os.WriteFile(out, plaintext, 0o600); err != nil {
 		fail("could not save %s: %v", out, err)
 	}
@@ -351,6 +391,63 @@ func cmdMembers() {
 	}
 }
 
+func cmdEnvironments() {
+	cfg := loadConfig()
+	if cfg.ServerURL == "" || cfg.Team == "" || cfg.Token == "" {
+		fail("please run the configure command first")
+	}
+	url := fmt.Sprintf("%s/api/teams/%s/secrets", strings.TrimRight(cfg.ServerURL, "/"), cfg.Team)
+	resp, err := apiRequest(http.MethodGet, url, cfg.Token, nil)
+	if err != nil {
+		fail("the request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fail("the server said (%d): %s", resp.StatusCode, string(body))
+	}
+	var names []string
+	_ = json.NewDecoder(resp.Body).Decode(&names)
+	if len(names) == 0 {
+		fmt.Println("No environments have been pushed yet.")
+		return
+	}
+	for _, n := range names {
+		fmt.Println(n)
+	}
+}
+
+func cmdHistory() {
+	cfg := loadConfig()
+	if cfg.ServerURL == "" || cfg.Team == "" || cfg.Token == "" {
+		fail("please run the configure command first")
+	}
+	url := fmt.Sprintf("%s/api/teams/%s/history", strings.TrimRight(cfg.ServerURL, "/"), cfg.Team)
+	resp, err := apiRequest(http.MethodGet, url, cfg.Token, nil)
+	if err != nil {
+		fail("the request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fail("the server said (%d): %s", resp.StatusCode, string(body))
+	}
+	var entries []struct {
+		Time   string `json:"time"`
+		Action string `json:"action"`
+		Who    string `json:"who"`
+		Detail string `json:"detail"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&entries)
+	if len(entries) == 0 {
+		fmt.Println("No activity recorded yet.")
+		return
+	}
+	for _, e := range entries {
+		fmt.Printf("%-25s %-18s %-12s %s\n", e.Time, e.Action, e.Who, e.Detail)
+	}
+}
+
 func usage() {
 	fmt.Println(`envshare, locked env vars and secrets, shared safely with your team
 
@@ -365,14 +462,26 @@ Everyday commands, typed in plain order, no symbols needed:
   envshare addmember
       admin only, gives someone new access to the team's secrets
 
+  envshare removemember
+      admin only, takes someone off the team's access list
+
   envshare push .env staging
       lock the file named dot env and send it as the staging environment
+
+  envshare push .env staging 30
+      the same, but the secret automatically expires in 30 days
 
   envshare pull staging .env
       fetch the staging environment and save it into a file named dot env
 
   envshare members
       list everyone who currently has access
+
+  envshare environments
+      list every environment that has been shared so far
+
+  envshare history
+      show a plain log of who pushed, pulled, or changed what, and when
 
 Type envshare followed by any of these words to get started.`)
 }
@@ -389,12 +498,18 @@ func main() {
 		cmdConfigure()
 	case "addmember":
 		cmdAddMember()
+	case "removemember":
+		cmdRemoveMember()
 	case "push":
 		cmdPush(os.Args[2:])
 	case "pull":
 		cmdPull(os.Args[2:])
 	case "members":
 		cmdMembers()
+	case "environments":
+		cmdEnvironments()
+	case "history":
+		cmdHistory()
 	case "help":
 		usage()
 	default:
