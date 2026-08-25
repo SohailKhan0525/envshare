@@ -1,16 +1,69 @@
 name: release
 
 on:
-  workflow_dispatch: {}
   push:
+    branches: [ "main" ]
     tags:
       - "v*"
+  workflow_dispatch: {}
 
 permissions:
   contents: write
 
 jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine and bump version tag
+        id: get_tag
+        run: |
+          set -e
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+            echo "Triggered by tag: $TAG"
+          else
+            git fetch --tags --force || true
+            LATEST_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
+            if [ -z "$LATEST_TAG" ]; then
+              TAG="v1.0.0"
+            else
+              VERSION_NO_V=$(echo "$LATEST_TAG" | sed 's/^v//')
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NO_V"
+              MAJOR=${MAJOR:-1}
+              MINOR=${MINOR:-0}
+              PATCH=${PATCH:-0}
+
+              COMMIT_MSG=$(git log -1 --pretty=%B)
+              if echo "$COMMIT_MSG" | grep -iq "\[major\]"; then
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+              elif echo "$COMMIT_MSG" | grep -iq "\[minor\]"; then
+                MINOR=$((MINOR + 1))
+                PATCH=0
+              else
+                PATCH=$((PATCH + 1))
+              fi
+              TAG="v${MAJOR}.${MINOR}.${PATCH}"
+            fi
+
+            echo "Bumping version to $TAG"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG" || true
+            git push origin "$TAG" || true
+          fi
+          echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+
   build:
+    needs: bump-version
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -55,7 +108,7 @@ jobs:
           path: dist/*
 
   publish:
-    needs: build
+    needs: [bump-version, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -73,5 +126,8 @@ jobs:
       - name: Publish a GitHub release with these files attached
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.bump-version.outputs.tag_name }}
+          name: Release ${{ needs.bump-version.outputs.tag_name }}
           files: ready/*
           generate_release_notes: true
+
