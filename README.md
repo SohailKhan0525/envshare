@@ -23,7 +23,7 @@ npm, the package manager most JavaScript tools use. Type exactly this,
 including the single small dash before the letter g, which tells npm to
 install it for use anywhere on the computer:
 
-  npm install -g @qofeno/envshare
+  npm install -g @agent-qofeno/envshare
 
 This quietly downloads the correct ready made program for that exact
 computer the first time it runs, so nobody needs to install the Go
