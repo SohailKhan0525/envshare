@@ -1,0 +1,33 @@
+name: build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Download dependencies
+        run: go mod tidy
+
+      - name: Build the CLI
+        run: go build -o bin/envshare ./cmd/envshare
+
+      - name: Build the server
+        run: go build -o bin/envshare-server ./cmd/envshare-server
+
+      - name: Save the built programs
+        uses: actions/upload-artifact@v4
+        with:
+          name: envshare-programs
+          path: bin/

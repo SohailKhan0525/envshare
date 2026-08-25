@@ -1,0 +1,77 @@
+name: release
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - system: linux
+            chip: amd64
+            ending: ""
+          - system: windows
+            chip: amd64
+            ending: ".exe"
+          - system: darwin
+            chip: amd64
+            ending: ""
+          - system: darwin
+            chip: arm64
+            ending: ""
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Download dependencies
+        run: go mod tidy
+
+      - name: Build the programs for this system
+        env:
+          GOOS: ${{ matrix.system }}
+          GOARCH: ${{ matrix.chip }}
+        run: |
+          mkdir -p dist
+          go build -o dist/envshare.${{ matrix.system }}.${{ matrix.chip }}${{ matrix.ending }} ./cmd/envshare
+          go build -o dist/envshare.server.${{ matrix.system }}.${{ matrix.chip }}${{ matrix.ending }} ./cmd/envshare-server
+
+      - name: Save this build
+        uses: actions/upload-artifact@v4
+        with:
+          name: build.${{ matrix.system }}.${{ matrix.chip }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Collect every build
+        uses: actions/download-artifact@v4
+        with:
+          path: collected
+
+      - name: Put every file in one folder
+        run: |
+          mkdir -p ready
+          find collected -type f -exec cp {} ready/ \;
+
+      - name: Publish a GitHub release with these files attached
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ready/*
+          generate_release_notes: true
