@@ -1,14 +1,38 @@
 {
   "name": "@agent-qofeno/envshare",
-  "version": "1.0.0",
-  "description": "Locked env vars and secrets, shared safely with your team, from the terminal.",
+  "version": "1.0.4",
+  "description": "🔐 Zero-trust CLI for sharing encrypted env vars & secrets safely across teams using end-to-end age encryption.",
+  "main": "bin/envshare.js",
   "bin": {
     "envshare": "bin/envshare.js"
   },
   "scripts": {
     "postinstall": "node scripts/install.js"
   },
+  "keywords": [
+    "envshare",
+    "secrets",
+    "env",
+    "environment-variables",
+    "encryption",
+    "age",
+    "security",
+    "cli",
+    "zero-trust",
+    "devops",
+    "team",
+    "dotenv"
+  ],
+  "author": "Sohail Khan <sohailkhannnn.0525@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SohailKhan0525/envshare.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SohailKhan0525/envshare/issues"
+  },
+  "homepage": "https://github.com/SohailKhan0525/envshare#readme",
   "engines": {
     "node": ">=14"
   }
