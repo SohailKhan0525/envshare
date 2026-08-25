@@ -1,5 +1,5 @@
 {
-  "name": "envshare",
+  "name": "@qofeno/envshare",
   "version": "1.0.0",
   "description": "Locked env vars and secrets, shared safely with your team, from the terminal.",
   "bin": {
