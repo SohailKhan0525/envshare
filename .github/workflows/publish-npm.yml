@@ -24,14 +24,18 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Sync package version with release tag
+      - name: Sync package version with tag or release
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG_NAME="${{ github.event.release.tag_name }}"
-            VERSION="${TAG_NAME#v}"
-            if [ -n "$VERSION" ]; then
-              npm version "$VERSION" --no-git-tag-version || true
-            fi
+          else
+            git fetch --tags --force || true
+            TAG_NAME=$(git tag -l "v*" --sort=-v:refname | head -n 1)
+          fi
+          VERSION="${TAG_NAME#v}"
+          if [ -n "$VERSION" ]; then
+            echo "Setting package version to $VERSION"
+            npm version "$VERSION" --no-git-tag-version || true
           fi
 
       - name: Publish the package
