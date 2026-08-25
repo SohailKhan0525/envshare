@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -17,6 +18,8 @@ jobs:
     steps:
       - name: Get the code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node and point it at the npm registry
         uses: actions/setup-node@v4
@@ -38,8 +41,9 @@ jobs:
             npm version "$VERSION" --no-git-tag-version || true
           fi
 
-      - name: Publish the package
-        run: npm publish --access public
+      - name: Publish the package with provenance
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NpmToken }}
+
 
