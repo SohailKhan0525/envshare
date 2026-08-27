@@ -529,3 +529,4 @@ func main() {
 	log.Println("note: put this behind a proper secure address (https) before real use, for example with Caddy or Railway.")
 	log.Fatal(http.ListenAndServe(addr, srv.router()))
 }
+

@@ -24,3 +24,4 @@ If someone's behavior in this project's issues, discussions, or pull
 requests feels unwelcoming or unsafe, please reach out to the maintainer
 directly through their GitHub profile rather than replying in public.
 Reports will be handled privately and taken seriously.
+

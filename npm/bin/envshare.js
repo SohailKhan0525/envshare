@@ -19,3 +19,4 @@ if (!fs.existsSync(programPath)) {
 
 const result = spawnSync(programPath, process.argv.slice(2), { stdio: "inherit" });
 process.exit(result.status === null ? 1 : result.status);
+

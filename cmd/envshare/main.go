@@ -18,6 +18,8 @@
 //	envshare members
 //	envshare environments
 //	envshare history
+//	envshare issues
+//	envshare star
 package main
 
 import (
@@ -28,12 +30,31 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
 	"filippo.io/age"
 )
+
+// repoAddress is this project's home on GitHub. If this project is copied
+// or forked under a different address, update this one line to match.
+const repoAddress = "https://github.com/SohailKhan0525/envshare"
+
+func openInBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	return cmd.Start()
+}
 
 func envshareDir() string {
 	home, err := os.UserHomeDir()
@@ -448,6 +469,24 @@ func cmdHistory() {
 	}
 }
 
+func cmdIssues() {
+	url := repoAddress + "/issues"
+	fmt.Println("Opening the issues page in your browser:")
+	fmt.Println("  " + url)
+	if err := openInBrowser(url); err != nil {
+		fmt.Println("Could not open a browser automatically, please visit the address above yourself.")
+	}
+}
+
+func cmdStar() {
+	fmt.Println("Opening the project page in your browser:")
+	fmt.Println("  " + repoAddress)
+	fmt.Println("If you find this useful, tap the star button near the top of the page, it genuinely helps other teams find and trust the project.")
+	if err := openInBrowser(repoAddress); err != nil {
+		fmt.Println("Could not open a browser automatically, please visit the address above yourself.")
+	}
+}
+
 func usage() {
 	fmt.Println(`envshare, locked env vars and secrets, shared safely with your team
 
@@ -483,6 +522,12 @@ Everyday commands, typed in plain order, no symbols needed:
   envshare history
       show a plain log of who pushed, pulled, or changed what, and when
 
+  envshare issues
+      open this project's issues page, for reporting a problem or an idea
+
+  envshare star
+      open this project's page, so you can show your support with a star
+
 Type envshare followed by any of these words to get started.`)
 }
 
@@ -510,6 +555,10 @@ func main() {
 		cmdEnvironments()
 	case "history":
 		cmdHistory()
+	case "issues":
+		cmdIssues()
+	case "star":
+		cmdStar()
 	case "help":
 		usage()
 	default:
@@ -518,3 +567,4 @@ func main() {
 		os.Exit(1)
 	}
 }
+

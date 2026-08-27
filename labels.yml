@@ -1,0 +1,24 @@
+- name: bug
+  color: d73a4a
+  description: Something is not working the way it should
+
+- name: enhancement
+  color: a2eeef
+  description: A new feature or improvement idea
+
+- name: question
+  color: d876e3
+  description: A question about how to use this project
+
+- name: good first issue
+  color: 7057ff
+  description: A good starting point for a new contributor
+
+- name: security
+  color: b60205
+  description: Related to keeping secrets and access safe
+
+- name: documentation
+  color: 0075ca
+  description: Related to the readme or other guide files
+

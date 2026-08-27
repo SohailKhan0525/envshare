@@ -1,0 +1,6 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a question
+    url: https://github.com/SohailKhan0525/envshare/discussions
+    about: For questions that are not a problem report or a feature idea
+
