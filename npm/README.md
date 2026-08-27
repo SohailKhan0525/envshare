@@ -11,7 +11,7 @@ never sees a readable secret.
 
 Install it for use anywhere on the computer:
 
-  npm install -g envshare
+  npm install -g @agent-qofeno/envshare
 
 Everyday commands, typed in plain order, no symbols needed:
 

@@ -24,7 +24,7 @@ including the single small dash before the letter g, which tells npm to
 install it for use anywhere on the computer, using the exact package name
 shown on this project's npm page:
 
-  npm install -g envshare
+  npm install -g @agent-qofeno/envshare
 
 This quietly downloads the correct ready made program for that exact
 computer the first time it runs, so nobody needs to install the Go

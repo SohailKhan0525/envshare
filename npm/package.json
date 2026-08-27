@@ -1,6 +1,6 @@
 {
-  "name": "envshare",
-  "version": "1.0.0",
+  "name": "@agent-qofeno/envshare",
+  "version": "1.0.7",
   "description": "Locked env vars and secrets, shared safely with your team, from the terminal.",
   "bin": {
     "envshare": "bin/envshare.js"
@@ -11,6 +11,8 @@
   "license": "MIT",
   "engines": {
     "node": ">=14"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
-
