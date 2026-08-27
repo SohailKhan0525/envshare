@@ -1,6 +1,6 @@
 {
   "name": "@agent-qofeno/envshare",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Locked env vars and secrets, shared safely with your team, from the terminal.",
   "bin": {
     "envshare": "bin/envshare.js"

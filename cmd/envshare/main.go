@@ -99,10 +99,11 @@ func fail(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
+var stdinReader = bufio.NewReader(os.Stdin)
+
 func promptLine(label string) string {
 	fmt.Print(label)
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
+	line, _ := stdinReader.ReadString('\n')
 	return strings.TrimSpace(line)
 }
 
