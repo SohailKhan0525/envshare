@@ -15,7 +15,7 @@ const githubOwner = "SohailKhan0525";
 const githubRepo = "envshare";
 
 function currentSystem() {
-  const map = { win32: "windows", darwin: "darwin", linux: "linux" };
+  const map = { win32: "windows", darwin: "darwin", linux: "linux", android: "linux" };
   const system = map[process.platform];
   if (!system) {
     throw new Error("this computer's system (" + process.platform + ") is not supported yet");

@@ -18,6 +18,9 @@ jobs:
           - system: linux
             chip: amd64
             ending: ""
+          - system: linux
+            chip: arm64
+            ending: ""
           - system: windows
             chip: amd64
             ending: ".exe"
